@@ -1,10 +1,3 @@
-Below is a complete README.md you can copy and paste directly into your GitHub repository.
-It uses standard GitHub Markdown and is written so a new user can go from zero to a running colorization demo.
-
-I included placeholders where you will later drop images, screenshots, and measurements. I also showed exactly how to embed images on GitHub.
-
----
-
 # LIDAR–Camera Pointcloud Colorization (ROS 2)
 
 ## Overview
