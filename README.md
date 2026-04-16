@@ -47,6 +47,7 @@ This repository was made using ROS2 Humble. Newer versions should work, but to m
 https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
 ```
 
+
 ## Step 1: Network Setup for Ouster LIDAR
 Before installing the LIDAR and SLAM drivers, it is important to ensure the LIDAR is working properly. This repository uses an Ouster OS1, but other Ouster models should work similarly.
 
@@ -65,7 +66,8 @@ If the LIDAR is properly connected you should see the screen below:
 
 ![Ouster connection screen](ouster_connection.png)
 
-If the LIDAR does not seem to connect, it is recommended to change the ethernet connection to "link local" as opposed to manual or DHCP. Refer to https://static.ouster.dev/sensor-docs/image_route1/image_route2/networking_guide/networking_guide.html#linux for more information on connecting your Ouster.
+If the LIDAR does not seem to connect, it is recommended to change the ethernet connection to "link local" as opposed to manual or automatic. Refer to https://static.ouster.dev/sensor-docs/image_route1/image_route2/networking_guide/networking_guide.html#linux for more information on connecting your Ouster.
+
 
 ## Step 2: Install Ouster_ROS and LiDARSLAM Drivers
 
@@ -171,6 +173,7 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 16, string
 ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string_arg: /path/to/maps_filtered/prefix}"
 ```
 
+
 ## Step 3: Install and Configure USB Cameras
 
 Install package:
@@ -208,7 +211,6 @@ Important:
 * Keep frame rate low (10 FPS) to avoid USB overload
 * Ensure consistent device mapping
 
----
 
 ## Step 4: Create ROS 2 Workspace for Colorization
 
@@ -232,7 +234,6 @@ colcon build
 source install/setup.bash
 ```
 
----
 
 ## Step 5: TF Tree Setup (Critical)
 
@@ -277,7 +278,6 @@ Check:
 * No missing links
 * No frame mismatches
 
----
 
 ## Step 6: Launch Cameras
 
@@ -297,7 +297,6 @@ Expected:
 ...
 ```
 
----
 
 ## Step 7: Validate System in RViz
 
@@ -323,7 +322,6 @@ Ensure:
 * Cameras publishing
 * TF aligns correctly
 
----
 
 ## Step 8: Run Colorization
 
@@ -349,7 +347,6 @@ If misaligned:
 * Camera calibration is wrong
 * Frame IDs mismatch
 
----
 
 ## Step 9: (Optional) SLAM Integration
 
@@ -367,7 +364,6 @@ Goal:
 * Reduce drift
 * Enable repeatable scans for change detection
 
----
 
 ## Step 10: Post-Processing (CloudCompare)
 
