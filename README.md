@@ -1,47 +1,24 @@
-# LIDAR Backpack System (ROS 2)
+# LIDAR-Camera System Use
 
 ### End-to-End Setup, Deployment, and Colorized Mapping
 
 ## Overview
 
-This repository documents the full pipeline for building and operating a wearable LIDAR mapping system capable of generating 3D point clouds for underground environments. There is a section for manual point cloud colorization, but it is still rudimentary and the node may run slow depending on the hardware used.
+This repository documents the full pipeline for building and operating a LiDAR-based mapping system capable of generating three-dimensional point clouds in challenging environments. While the primary focus is on reliable geometry capture, the system also includes an initial implementation of point cloud colorization using multiple cameras. This colorization process is functional but remains computationally demanding and may perform slowly depending on the available hardware.
 
-The system integrates:
+The system integrates an Ouster OS1 LiDAR as the primary sensing modality for geometric data acquisition, along with four USB cameras to provide visual information for colorization. ROS 2 is used as the backbone for data handling, communication, and synchronization, while a well-defined TF tree ensures proper spatial alignment between all sensors. In addition, SLAM is incorporated to improve mapping consistency and enable repeatable scans over time.
 
-* Ouster OS1 LIDAR (primary geometry sensor)
-* Four USB cameras (for colorization)
-* ROS2 (data handling and synchronization)
-* TF tree (sensor alignment)
-* SLAM (for mapping and repeatability)
+The resulting outputs support the generation of colorized point clouds, corridor-scale mapping, and post-processing workflows such as change detection using tools like CloudCompare. The system is specifically designed for GPS-denied and visually repetitive environments—such as underground tunnels—where maintaining consistent and accurate spatial representations is essential.
 
-The final output supports:
-
-* Colorized point clouds
-* Corridor-scale mapping
-* Change detection workflows (e.g., CloudCompare)
-
-This system is designed for GPS-denied, visually repetitive environments such as underground tunnels, where consistent geometry capture is critical.
-
----
 
 ## System Architecture
 
-Core data flow:
+The system operates through a structured data pipeline in which each sensor contributes to the final mapped output. The LiDAR continuously publishes point cloud data through ROS 2, while each of the four cameras publishes image streams along with their corresponding calibration information. A static TF tree defines the spatial relationships between the LiDAR, cameras, and base reference frame, ensuring that all data is expressed within a consistent coordinate system.
 
-1. LIDAR publishes `/ouster/points` via ROS2
-2. Cameras publish `/cameraX/image_raw` and `/cameraX/camera_info`
-3. Static TF defines all sensor relationships
-4. Colorization node projects LIDAR points into camera frames
-5. Output is a colored point cloud
+Colorization is performed by projecting LiDAR points into the image planes of the cameras using known extrinsic transformations and intrinsic camera parameters. This process produces a colored point cloud that enhances interpretability of the environment. To further improve spatial consistency, SLAM is used to refine pose estimation and reduce drift over time. Finally, the generated datasets can be exported and analyzed in post-processing tools to enable applications such as change detection and deformation analysis.
 
-Optional:
 
-6. SLAM refines pose and reduces drift
-7. Post-processing enables change detection
-
----
-
-## Hardware Requirements
+Hardware requirements include:
 
 * Ouster OS1 LIDAR
 * 4× USB cameras (USB 3.0 recommended)
@@ -50,35 +27,44 @@ Optional:
 * USB hub for cameras
 * Rigid mounting frame (backpack or robot)
 
----
 
-## Software Requirements
+Software requirements include:
 
 * Ubuntu 22.04
 * ROS 2 Humble
 * Python 3.10
 * colcon build tools
 * rosdep
-
-Recommended:
-
 * RViz2
 * CloudCompare (post-processing)
 * LidarView (optional SLAM validation)
 
----
 
 ## Step 0: ROS2 Installation
 
-This step links to all installation guides for the softwares/packages used in this repository. Please ensure everything is installed properly according to the respective documentation before moving onto the next steps.
-
-ROS2 Humble (newer versions may be used, but this repository was made using Humble):
+This repository was made using ROS2 Humble. Newer versions should work, but to mitigate any errors, it is reommended to use Humble. Below is the documentation to install it:
+```bash
 https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
-
+```
 
 ## Step 1: Network Setup for Ouster LIDAR
+Before installing the LIDAR and SLAM drivers, it is important to ensure the LIDAR is working properly. This repository uses an Ouster OS1, but other Ouster models should work similarly.
+
+Plug in your Ouster's interface box (power and ethernet) and check if the LIDAR connects to your computer. Locate the LIDAR's hostname (a 12-digit number usually located on the top of the physical sensor). Then navigate to this website:
+
+```bash
+os-############.local/
+```
+
+where ```############``` is your Ouster hostname. An example is shown below:
+```bash
+os-122208000461.local/
+```
+
+If the LIDAR is properly connected you should see the screen below:
 
 
+If the LIDAR does not seem to connect, it is recommended to change the ethernet connection to "link local" as opposed to manual or DHCP. Refer to https://static.ouster.dev/sensor-docs/image_route1/image_route2/networking_guide/networking_guide.html#linux for more information on connecting your Ouster.
 
 ## Step 2: Install Ouster_ROS and LiDARSLAM Drivers
 
