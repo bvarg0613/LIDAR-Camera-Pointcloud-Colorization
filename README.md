@@ -63,6 +63,7 @@ os-122208000461.local/
 
 If the LIDAR is properly connected you should see the screen below:
 
+![Ouster connection screen](ouster_connection.png)
 
 If the LIDAR does not seem to connect, it is recommended to change the ethernet connection to "link local" as opposed to manual or DHCP. Refer to https://static.ouster.dev/sensor-docs/image_route1/image_route2/networking_guide/networking_guide.html#linux for more information on connecting your Ouster.
 
