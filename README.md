@@ -4,15 +4,15 @@
 
 ## Overview
 
-This repository documents the full pipeline for building and operating a wearable LiDAR mapping system capable of generating colorized 3D point clouds for underground environments.
+This repository documents the full pipeline for building and operating a wearable LIDAR mapping system capable of generating 3D point clouds for underground environments. There is a section for manual point cloud colorization, but it is still rudimentary and the node may run slow depending on the hardware used.
 
 The system integrates:
 
-* Ouster OS1 LiDAR (primary geometry sensor)
+* Ouster OS1 LIDAR (primary geometry sensor)
 * Four USB cameras (for colorization)
-* ROS 2 (data handling and synchronization)
+* ROS2 (data handling and synchronization)
 * TF tree (sensor alignment)
-* Optional SLAM (for mapping and repeatability)
+* SLAM (for mapping and repeatability)
 
 The final output supports:
 
@@ -28,10 +28,10 @@ This system is designed for GPS-denied, visually repetitive environments such as
 
 Core data flow:
 
-1. LiDAR publishes `/ouster/points`
+1. LIDAR publishes `/ouster/points` via ROS2
 2. Cameras publish `/cameraX/image_raw` and `/cameraX/camera_info`
 3. Static TF defines all sensor relationships
-4. Colorization node projects LiDAR points into camera frames
+4. Colorization node projects LIDAR points into camera frames
 5. Output is a colored point cloud
 
 Optional:
@@ -43,10 +43,10 @@ Optional:
 
 ## Hardware Requirements
 
-* Ouster OS1 LiDAR
+* Ouster OS1 LIDAR
 * 4× USB cameras (USB 3.0 recommended)
 * High-performance laptop or onboard computer
-* Ethernet connection for LiDAR
+* Ethernet connection for LIDAR
 * USB hub for cameras
 * Rigid mounting frame (backpack or robot)
 
@@ -68,109 +68,121 @@ Recommended:
 
 ---
 
-## Step 0: Install ROS 2 Humble
+## Step 0: ROS2 Installation
 
+This step links to all installation guides for the softwares/packages used in this repository. Please ensure everything is installed properly according to the respective documentation before moving onto the next steps.
+
+ROS2 Humble (newer versions may be used, but this repository was made using Humble):
+https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
+
+
+## Step 1: Network Setup for Ouster LIDAR
+
+
+
+## Step 2: Install Ouster_ROS and LiDARSLAM Drivers
+
+### Install dependencies
 ```bash
-sudo apt update && sudo apt upgrade -y
-
-sudo apt install software-properties-common
-sudo add-apt-repository universe
-
-sudo apt update
-sudo apt install curl -y
-
-curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | sudo apt-key add -
-
-sudo apt install ros-humble-desktop -y
+sudo apt install -y libeigen3-dev
+sudo apt install -y libceres-dev
+sudo apt install -y libpcl-dev
+sudo apt install -y libboost-all-dev
+sudo apt install -y libnanoflann-dev
 ```
 
-Source ROS:
-
+### Install core slam ros2 wrapper
 ```bash
-echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-source ~/.bashrc
+cmake -E make_directory colcon_ws && cd colcon_ws
+git clone https://gitlab.kitware.com/keu-computervision/slam.git src/slam --recursive -b feat/ROS2
 ```
 
-Install tools:
+Hold off on building package until AFTER Ouster driver has been installed and built. That MUST be done first.
 
+### Install ROS2 dependecies
+Navigate to src directory
 ```bash
-sudo apt install python3-colcon-common-extensions python3-rosdep -y
-rosdep init
-rosdep update
+cd ~/workspaces/colcon_ws/src
 ```
 
----
-
-## Step 1: Network Setup for Ouster LiDAR
-
-You must configure Ethernet so your computer can communicate with the LiDAR.
-
-Typical static setup:
-
-* Computer IP: `192.168.90.1`
-* LiDAR IP: `192.168.90.2`
-
-Verify connection:
-
+Install each dependency
 ```bash
-ping 192.168.90.2
+sudo apt install -y ros-$ROS_DISTRO-desktop-full
+sudo apt install -y ros-$ROS_VERSION-pcl-ros
+sudo apt install -y ros-$ROS_DISTRO-apriltag
+sudo apt install -y ros-$ROS_DISTRO-libg2o
+
+​sudo apt install -y         \
+    build-essential         \
+    libeigen3-dev           \
+    libjsoncpp-dev          \
+    libspdlog-dev           \
+    libcurl4-openssl-dev    \
+    cmake                   \
+    python3-colcon-common-extensions
 ```
 
-Access LiDAR web interface:
-
-```
-http://192.168.90.2
-```
-
-Do not continue until this works.
-
----
-
-## Step 2: Install Ouster ROS Driver
-
-Clone into workspace:
-
+### Clone Ouster repository
+From inside your ```bash/colcon_ws/src``` directory:
 ```bash
-mkdir -p ~/lidar_ws/src
-cd ~/lidar_ws/src
-git clone https://github.com/ouster-lidar/ouster-ros.git -b humble-devel
+git clone -b ros2 --recurse-submodules https://github.com/ouster-lidar/ouster-ros.git
+
+## Source ROS2 if needed
+source /opt/ros/humble/setup.bash
+
+## Build Ouster packages
+cd ~/workspaces/colcon_ws
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
+
+## Build slam package
+colcon build --base-paths src/slam/ros2_wrapping --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-Install dependencies:
-
+### LiDARSLAM Live Usage
+LiDARSLAM uses two different arguments to tell the node whether the LIDAR is indoors or outdoors. Use each one accordingly.
 ```bash
-cd ~/lidar_ws
-rosdep install --from-paths src -y --ignore-src
-```
-
-Build:
-
-```bash
-colcon build
+cd ~/workspaces/colcon_ws
 source install/setup.bash
+
+## Launch Ouster node
+ros2 launch ouster_ros sensor.launch.xml sensor_hostname:=<sensor IP address>
+
+## Run LiDARSLAM node on another terminal
+ros2 launch lidar_slam slam_ouster.py replay:=false outdoor:=true  # outdoor use
+ros2 launch lidar_slam slam_ouster.py replay:=false outdoor:=false  # indoor use
 ```
 
-Run driver:
+### LiDARSLAM ROSbag Replay
+LiDARSLAM supports ROSbag replay. Ideally you should use the ```record.launch.xml``` node from the Ouster driver (as opposed to simply using ```ros2 bag record```). This saves all the topics better and allows for a smoother SLAM generation.
 
 ```bash
-ros2 launch ouster_ros sensor.launch.py
+cd ~/workspaces/colcon_ws
+source install/setup.bash
+
+## Run Ouster rosbag replay launch file
+ros2 launch ouster_ros replay.launch.xml bag_file:=/path/to/saved/rosbag
+
+## Run LiDARSLAM node on another terminal
+ros2 launch lidar_slam slam_ouster.py replay:=true outdoor:=true  # outdoor use
+ros2 launch lidar_slam slam_ouster.py replay:=true outdoor:=false  # indoor use
+
+## Commands to run for best SLAM map
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "command: 8"
 ```
 
-Verify:
+### Saving SLAM Maps
+You must publish a command to save the SLAM as a PCD. On a separate terminal, navigate to your colcon_ws and source:
 
 ```bash
-ros2 topic list
-```
+cd ~/workspaces/colcon_ws
+source install/setup.bash
 
-You should see:
+## SAVE_KEYPOINTS_MAPS
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 16, string_arg: /path/to/maps/prefix}"
 
+## SAVE_FILTERED_KEYPOINTS_MAP
+ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string_arg: /path/to/maps_filtered/prefix}"
 ```
-/ouster/points
-/tf
-/tf_static
-```
-
----
 
 ## Step 3: Install and Configure USB Cameras
 
@@ -320,7 +332,7 @@ Add:
 
 Ensure:
 
-* LiDAR data visible
+* LIDAR data visible
 * Cameras publishing
 * TF aligns correctly
 
@@ -356,7 +368,7 @@ If misaligned:
 
 For mapping and repeatability:
 
-* Use LiDAR SLAM (e.g., Kitware LidarSLAM)
+* Use LIDAR SLAM (e.g., Kitware LidarSLAM)
 * Tune parameters such as:
 
   * voxel size
@@ -392,7 +404,7 @@ System performance depends on:
 * Accurate TF calibration
 * Stable mounting
 * Consistent camera exposure
-* LiDAR scan stability
+* LIDAR scan stability
 * Minimal motion distortion
 
 ---
