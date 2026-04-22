@@ -176,19 +176,15 @@ ros2 topic pub -1 /slam_command lidar_slam/msg/SlamCommand "{command: 17, string
 
 ## Step 3: Install and Configure USB Cameras
 
-Install package:
+Build the ```usb_cam``` ROS2 package from source using the instructions at ```https://index.ros.org/p/usb_cam/```.
 
-```bash
-sudo apt install ros-humble-usb-cam
-```
-
-Check devices:
+You'll need to check your devices to know which video to use for each camera. One recommendation is to unplug and plug your camera in and see which video has disappeared using:
 
 ```bash
 ls /dev/video*
 ```
 
-Create 4 parameter files:
+There are 2 premade camera parameter files within the ```usb_cam``` package. Create 2 more (by copying the files) so you have 4 parameter files, respectively:
 
 ```
 params_1.yaml
@@ -197,19 +193,53 @@ params_3.yaml
 params_4.yaml
 ```
 
-Each must define:
+Ensure that each one defines:
 
 ```yaml
-video_device: "/dev/videoX"
-image_width: 640
+video_device: "/dev/videoX"    # X corresponds to the video number
+image_width: 640    
 image_height: 480
-framerate: 10
+framerate: 10    # Keep frame rate low (10 FPS) to avoid USB overload
 ```
 
-Important:
+Test that each camera works by launching using:
 
-* Keep frame rate low (10 FPS) to avoid USB overload
-* Ensure consistent device mapping
+```bash
+ros2 launch usb_cam camera.launch.py
+```
+
+Modify the ```CAMERA``` class from the ```usb_cam``` launch file to allow for 4 cameras to launch simultaneously. The code snippet below is what was used for the development of this repository:
+
+```yaml
+CAMERAS = []
+CAMERAS.append(
+    CameraConfig(
+        name='camera1',
+        param_path=Path(USB_CAM_DIR, 'config', 'params_1.yaml')
+    )
+) 
+    # Add more Camera's here and they will automatically be launched below
+CAMERAS.append(
+    CameraConfig(
+        name='camera2',
+        param_path=Path(USB_CAM_DIR, 'config', 'params_2.yaml')
+    )
+)
+CAMERAS.append(
+    CameraConfig(
+        name='camera3',
+        param_path=Path(USB_CAM_DIR, 'config', 'params_3.yaml')
+    )
+)
+CAMERAS.append(
+    CameraConfig(
+        name='camera4',
+        param_path=Path(USB_CAM_DIR, 'config', 'params_4.yaml')
+    )
+)
+```
+
+Double check each camera runs by using Rviz and subscribing to each camera topic. If they do not run smoothly, consider lowering the framerate or image width/height. If this doesn't work, it may be a bandwidth error.
 
 
 ## Step 4: Create ROS 2 Workspace for Colorization
